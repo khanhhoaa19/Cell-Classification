@@ -14,15 +14,24 @@ def change_to_ndarray(path, data_train):
     numpydata = asarray(img)
     data_train.append(numpydata)
 
+def change_to_ndarray_test(path, data, label):
+    img = Image.open(path)
+    numpydata = asarray(img)
+    data.append(numpydata)
+    label.append(5)
+
 path = "D:/dataset/32x32/"
 path_validatioon = "D:/dataset/32x32/validation/"
+path_test = "D:/dataset/32x32/test/"
 X_train = []
 y_train = []
 X_validation = []
 y_validation = []
+X_test = []
+y_test = []
 for folder in os.listdir(path):
     if folder == "Breast invasive carcinoma":
-        for img in os.listdir(path+folder):
+        for img in os.listdir(path + folder):
             file = path + folder + "/" + img
             change_to_ndarray(file, X_train)
         for i in range(2148):
@@ -60,7 +69,7 @@ for folder in os.listdir(path):
 
 for folder in os.listdir(path_validatioon):
     if folder == "Breast invasive carcinoma":
-        for img in os.listdir(path_validatioon+folder):
+        for img in os.listdir(path_validatioon + folder):
             file = path_validatioon + folder + "/" + img
             change_to_ndarray(file, X_validation)
         for i in range(338):
@@ -96,14 +105,17 @@ for folder in os.listdir(path_validatioon):
         for i in range(275):
             y_validation.append(5)
 
-# print(len(X_train), len(y_train), len(X_validation), len(y_validation))
+for img in os.listdir(path_test):
+    file = path_test + img
+    change_to_ndarray_test(file, X_test, y_test)
+
 
 print()
 print("Image Shape: {}".format(X_train[0].shape))
 print()
 print("Training Set:   {} samples".format(len(X_train)))
 print("Validation Set: {} samples".format(len(X_validation)))
-# print("Test Set:       {} samples".format(len(X_test)))
+print("Test Set:       {} samples".format(len(X_test)))
 
 from sklearn.utils import shuffle
 
@@ -173,7 +185,7 @@ x = tf.placeholder(tf.float32, (None, 32, 32, 3))
 y = tf.placeholder(tf.int32, (None))
 one_hot_y = tf.one_hot(y, 6)
 
-rate = 0.001
+rate = 0.004
 
 logits = LeNet(x)
 cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels=one_hot_y, logits=logits)
@@ -196,43 +208,53 @@ def evaluate(X_data, y_data):
     return total_accuracy / num_examples
 
 
-# with tf.Session() as sess:
-#     sess.run(tf.global_variables_initializer())
-#     num_examples = len(X_train)
-#
-#     print("Training...")
-#     print()
-#     for i in range(EPOCHS):
-#         X_train, y_train = shuffle(X_train, y_train)
-#         for offset in range(0, num_examples, BATCH_SIZE):
-#             end = offset + BATCH_SIZE
-#             batch_x, batch_y = X_train[offset:end], y_train[offset:end]
-#             sess.run(training_operation, feed_dict={x: batch_x, y: batch_y})
-#
-#         validation_accuracy = evaluate(X_validation, y_validation)
-#         print("EPOCH {} ...".format(i + 1))
-#         print("Validation Accuracy = {:.3f}".format(validation_accuracy))
-#         print()
-#     saver.save(sess, './lenet')
-#     print("Model saved")
+with tf.Session() as sess:
+    sess.run(tf.global_variables_initializer())
+    num_examples = len(X_train)
 
-def change_to_ndarray_new(path, data, label):
-    img = Image.open(path)
-    numpydata = asarray(img)
-    data.append(numpydata)
-    label.append(5)
+    print("Training LeNet on dataset, please wait\n")
 
-path_test = "D:/dataset/32x32/test/"
-X_test = []
-y_test = []
+    train_accuracy_list = []
+    validation_accuracy_list = []
 
-for img in os.listdir(path_test):
-    file = path_test + img
-    change_to_ndarray_new(file,X_test, y_test)
+    for i in range(EPOCHS):
+        X_train, y_train = shuffle(X_train, y_train)
+        for offset in range(0, num_examples, BATCH_SIZE):
+            end = offset + BATCH_SIZE
+            batch_x, batch_y = X_train[offset:end], y_train[offset:end]
+            sess.run(training_operation, feed_dict={x: batch_x, y: batch_y})
+
+        train_accuracy = evaluate(X_train, y_train)
+        train_accuracy_list.append(train_accuracy)
+
+        validation_accuracy = evaluate(X_validation, y_validation)
+        validation_accuracy_list.append(validation_accuracy)
+
+        validation_accuracy = evaluate(X_validation, y_validation)
+        print("EPOCH {} ...".format(i + 1))
+        print("Training Accuracy = {:.3f}".format(train_accuracy))
+        print('Validation Accuracy = {:.3f}'.format(validation_accuracy))
+        print('----------------------------')
+    saver.save(sess, './lenet')
+    print("Model saved")
+
+import matplotlib.pyplot as plt
+plt.plot(train_accuracy_list)
+plt.title("Training Accuracy")
+plt.show()
+
+plt.plot(validation_accuracy_list)
+plt.title("Validation Accuracy")
+plt.show()
 
 with tf.Session() as sess:
     saver.restore(sess, tf.train.latest_checkpoint('.'))
 
+    train_accuracy = evaluate(X_train, y_train)
+    print("Training Accuracy = {:.3f}".format(train_accuracy))
+
+    valid_accuracy = evaluate(X_validation, y_validation)
+    print("Validation Accuracy = {:.3f}".format(valid_accuracy))
+
     test_accuracy = evaluate(X_test, y_test)
     print("Test Accuracy = {:.3f}".format(test_accuracy))
-
